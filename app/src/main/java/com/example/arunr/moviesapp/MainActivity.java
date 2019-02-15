@@ -131,10 +131,13 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         );
         if (sortOrder.equals(this.getString(R.string.pref_most_popular))) {
             Log.d(LOG_TAG, "Sorting by most popular");
-            retrofitManager.loadJson(this);
-        } else {
+            retrofitManager.getPopulatMovies(this);
+        } else if (sortOrder.equals(this.getString(R.string.pref_highest_rated))) {
             Log.d(LOG_TAG, "Sorting by vote average");
-            retrofitManager.loadJson1(this);
+            retrofitManager.getTopRatedMovies(this);
+        } else {
+            Log.d(LOG_TAG, "Sorting by upcoming movies");
+            retrofitManager.getUpcomingMovies(this);
         }
     }
 

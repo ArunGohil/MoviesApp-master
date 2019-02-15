@@ -20,6 +20,9 @@ public interface Service {
     @GET("movie/top_rated")
     Call<MoviesResponse> getTopRatedMovies(@Query("api_key") String apiKey);
 
+    @GET("movie/upcoming")
+    Call<MoviesResponse> getUpcomingMovies(@Query("api_key") String apiKey);
+
     @GET("movie/{movie_id}/videos")
     Call<TrailerResponse> getMovieTrailer(@Path("movie_id") int id, @Query("api_key") String apiKey);
 }
