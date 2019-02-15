@@ -24,6 +24,7 @@ import com.example.arunr.moviesapp.api.Client;
 import com.example.arunr.moviesapp.api.Service;
 import com.example.arunr.moviesapp.model.Movie;
 import com.example.arunr.moviesapp.model.MoviesResponse;
+import com.example.arunr.moviesapp.retrofit.RetrofitManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +33,8 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class MainActivity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
+public class MainActivity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener,
+        RetrofitMovieResponseListener {
 
     private RecyclerView recyclerView;
     private MoviesAdapter adapter;
@@ -40,6 +42,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     ProgressDialog progressDialog;
     private SwipeRefreshLayout swipeContainer;
     public static final String LOG_TAG = MoviesAdapter.class.getName();
+    private RetrofitManager retrofitManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,6 +80,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         progressDialog.show();
 
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
+        retrofitManager = new RetrofitManager();
 
         movieList = new ArrayList<>();
         adapter = new MoviesAdapter(this, movieList);
@@ -93,77 +97,6 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         adapter.notifyDataSetChanged();
 
         checkSortOrder();
-    }
-    // calls the api and loads the data
-    private void loadJson() {
-        try {
-            if (BuildConfig.THE_MOVIE_API_TOKEN.isEmpty()) {
-                Toast.makeText(getApplicationContext(), "Please obtain API Key", Toast.LENGTH_SHORT).show();
-                progressDialog.dismiss();
-                return;
-            }
-
-            Client client = new Client();
-            Service apiService = client.getClient().create(Service.class);
-            Call<MoviesResponse> call = apiService.getPopularMovies(BuildConfig.THE_MOVIE_API_TOKEN);
-            call.enqueue(new Callback<MoviesResponse>() {
-                @Override
-                public void onResponse(Call<MoviesResponse> call, Response<MoviesResponse> response) {
-                    List<Movie> movies = response.body().getResults();
-                    recyclerView.setAdapter(new MoviesAdapter(getApplicationContext(), movies));
-                    recyclerView.smoothScrollToPosition(0);
-                    if (swipeContainer.isRefreshing()) {
-                        swipeContainer.setRefreshing(false);
-                    }
-                    progressDialog.dismiss();
-                }
-
-                @Override
-                public void onFailure(Call<MoviesResponse> call, Throwable t) {
-                    Log.d("Error", t.getMessage());
-                    Toast.makeText(MainActivity.this, "Error Fetching Data!", Toast.LENGTH_SHORT).show();
-                }
-            });
-        } catch (Exception e) {
-            Log.d("Error", e.getMessage());
-            Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    // calls the top rated movies api
-    private void loadJson1() {
-        try {
-            if (BuildConfig.THE_MOVIE_API_TOKEN.isEmpty()) {
-                Toast.makeText(getApplicationContext(), "Please obtain API Key", Toast.LENGTH_SHORT).show();
-                progressDialog.dismiss();
-                return;
-            }
-
-            Client client = new Client();
-            Service apiService = client.getClient().create(Service.class);
-            Call<MoviesResponse> call = apiService.getTopRatedMovies(BuildConfig.THE_MOVIE_API_TOKEN);
-            call.enqueue(new Callback<MoviesResponse>() {
-                @Override
-                public void onResponse(Call<MoviesResponse> call, Response<MoviesResponse> response) {
-                    List<Movie> movies = response.body().getResults();
-                    recyclerView.setAdapter(new MoviesAdapter(getApplicationContext(), movies));
-                    recyclerView.smoothScrollToPosition(0);
-                    if (swipeContainer.isRefreshing()) {
-                        swipeContainer.setRefreshing(false);
-                    }
-                    progressDialog.dismiss();
-                }
-
-                @Override
-                public void onFailure(Call<MoviesResponse> call, Throwable t) {
-                    Log.d("Error", t.getMessage());
-                    Toast.makeText(MainActivity.this, "Error Fetching Data!", Toast.LENGTH_SHORT).show();
-                }
-            });
-        } catch (Exception e) {
-            Log.d("Error", e.getMessage());
-            Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
-        }
     }
 
     @Override
@@ -198,10 +131,10 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         );
         if (sortOrder.equals(this.getString(R.string.pref_most_popular))) {
             Log.d(LOG_TAG, "Sorting by most popular");
-            loadJson();
+            retrofitManager.loadJson(this);
         } else {
             Log.d(LOG_TAG, "Sorting by vote average");
-            loadJson1();
+            retrofitManager.loadJson1(this);
         }
     }
 
@@ -214,4 +147,28 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
 
         }
     }
+
+    @Override
+    public void onDataReceived(MoviesResponse response) {
+        if (BuildConfig.THE_MOVIE_API_TOKEN.isEmpty()) {
+            Toast.makeText(getApplicationContext(), "Please obtain API Key", Toast.LENGTH_SHORT).show();
+            progressDialog.dismiss();
+            return;
+        }
+
+        List<Movie> movies = ((MoviesResponse) response).getResults();
+        recyclerView.setAdapter(new MoviesAdapter(getApplicationContext(), movies));
+        recyclerView.smoothScrollToPosition(0);
+        if (swipeContainer.isRefreshing()) {
+            swipeContainer.setRefreshing(false);
+        }
+        progressDialog.dismiss();
+    }
+
+    @Override
+    public void onDataFailed(String errorMessage) {
+        Log.d("Error", errorMessage);
+        Toast.makeText(MainActivity.this, "Error Fetching Data!", Toast.LENGTH_SHORT).show();
+    }
+
 }
